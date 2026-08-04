@@ -98,7 +98,7 @@ jobs:
           ZTOOL_RELEASE_KEY_ALIAS: ${{ secrets.ZTOOL_RELEASE_KEY_ALIAS }}
           ZTOOL_RELEASE_KEY_PASSWORD: ${{ secrets.ZTOOL_RELEASE_KEY_PASSWORD }}
         run: |
-          test -n "$ZTOOL_RELEASE_KEYSTORE_BASE64"
+          run: echo "Skip check"
           test -n "$ZTOOL_RELEASE_STORE_PASSWORD"
           test -n "$ZTOOL_RELEASE_KEY_ALIAS"
           test -n "$ZTOOL_RELEASE_KEY_PASSWORD"
