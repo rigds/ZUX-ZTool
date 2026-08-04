@@ -41,10 +41,13 @@ class LauncherNoLabelMode : AppHookModule() {
      * When BubbleTextView is used by the system-shortcut popup, the no-label
      * logic must be skipped so the popup menu labels display correctly.
      */
-    private fun isFromPopupSystemShortcut(): Boolean {
+    private fun isFromPopup(): Boolean {
         return Thread.currentThread().stackTrace.any { frame ->
-            frame.className == "com.android.launcher3.popup.PopupContainerWithArrow" &&
-                frame.methodName == "initializeSystemShortcut"
+            val className = frame.className
+            className.contains("PopupContainerWithArrow") ||
+            className.contains("DeepShortcut") ||
+            className.contains("SystemShortcut") ||
+            className.contains("ShortcutsItemView")
         }
     }
 
@@ -68,7 +71,7 @@ class LauncherNoLabelMode : AppHookModule() {
                 Boolean::class.javaPrimitiveType
             )
             hookWithId(setTextVisibilityMethod, "set_text_visibility_1") {  chain ->
-                if (isFromPopupSystemShortcut()) {
+                if (isFromPopup()) {
                     chain.proceed(chain.args.toTypedArray())
                 } else {
                     val args = arrayOf<Any?>(java.lang.Boolean.valueOf(false))
@@ -84,7 +87,7 @@ class LauncherNoLabelMode : AppHookModule() {
                 Float::class.javaPrimitiveType
             )
             hookWithId(setTextAlphaMethod, "set_text_alpha_1") {  chain ->
-                if (isFromPopupSystemShortcut()) {
+                if (isFromPopup()) {
                     chain.proceed(chain.args.toTypedArray())
                 } else {
                     val args = arrayOf<Any?>(java.lang.Float.valueOf(0.0f))
@@ -123,8 +126,12 @@ class LauncherNoLabelMode : AppHookModule() {
                 Boolean::class.javaPrimitiveType
             )
             hookWithId(setTextVisibilityMethod, "set_text_visibility_2") {  chain ->
-                val args = arrayOf<Any?>(java.lang.Boolean.valueOf(false))
-                chain.proceed(args)
+                if (isFromPopup()) {
+                    chain.proceed(chain.args.toTypedArray())
+                } else {
+                    val args = arrayOf<Any?>(java.lang.Boolean.valueOf(false))
+                    chain.proceed(args)
+                }
             }
 
             // Force setTextAlpha to always stay at 0 (hidden)
@@ -133,8 +140,12 @@ class LauncherNoLabelMode : AppHookModule() {
                 Float::class.javaPrimitiveType
             )
             hookWithId(setTextAlphaMethod, "set_text_alpha_2") {  chain ->
-                val args = arrayOf<Any?>(java.lang.Float.valueOf(0.0f))
-                chain.proceed(args)
+                if (isFromPopup()) {
+                    chain.proceed(chain.args.toTypedArray())
+                } else {
+                    val args = arrayOf<Any?>(java.lang.Float.valueOf(0.0f))
+                    chain.proceed(args)
+                }
             }
 
             // Prevent setIgnoreSetAlphaVisible from being set to true,
@@ -155,4 +166,3 @@ class LauncherNoLabelMode : AppHookModule() {
     }
 
 }
-
