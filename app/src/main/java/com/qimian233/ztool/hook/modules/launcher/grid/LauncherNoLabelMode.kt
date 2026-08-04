@@ -126,12 +126,8 @@ class LauncherNoLabelMode : AppHookModule() {
                 Boolean::class.javaPrimitiveType
             )
             hookWithId(setTextVisibilityMethod, "set_text_visibility_2") {  chain ->
-                if (isFromPopup()) {
-                    chain.proceed(chain.args.toTypedArray())
-                } else {
-                    val args = arrayOf<Any?>(java.lang.Boolean.valueOf(false))
-                    chain.proceed(args)
-                }
+                val args = arrayOf<Any?>(java.lang.Boolean.valueOf(false))
+                chain.proceed(args)
             }
 
             // Force setTextAlpha to always stay at 0 (hidden)
@@ -140,12 +136,8 @@ class LauncherNoLabelMode : AppHookModule() {
                 Float::class.javaPrimitiveType
             )
             hookWithId(setTextAlphaMethod, "set_text_alpha_2") {  chain ->
-                if (isFromPopup()) {
-                    chain.proceed(chain.args.toTypedArray())
-                } else {
-                    val args = arrayOf<Any?>(java.lang.Float.valueOf(0.0f))
-                    chain.proceed(args)
-                }
+                val args = arrayOf<Any?>(java.lang.Float.valueOf(0.0f))
+                chain.proceed(args)
             }
 
             // Prevent setIgnoreSetAlphaVisible from being set to true,
