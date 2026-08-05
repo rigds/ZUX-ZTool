@@ -36,36 +36,43 @@ class LauncherNoLabelMode : AppHookModule() {
     }
 
     /**
-     * 精准判断当前 View 是否属于长按弹窗（而不是被弹窗恢复状态的桌面图标）
+     * 三层漏斗精准判断当前 View 是否属于长按弹窗
      */
-    private fun isPopupItem(view: View): Boolean {
-        // 1. 优先通过父级容器层级判断（最准确，能完美避开弹窗关闭时的状态恢复）
+    private fun isFromPopup(view: View): Boolean {
+        // 1. 检查父级容器（最靠谱，专门对付已经挂载的 View 和状态恢复）
         var parent = view.parent
         while (parent != null) {
             val name = parent.javaClass.simpleName
-            // 如果在这些弹窗容器里，说明是真正的菜单项，允许显示文字
             if (name.contains("Popup") || name.contains("DeepShortcut") || name.contains("ShortcutsItem")) {
-                return true
+                return true // 明确在长按菜单中
             }
-            // 如果在这些桌面/抽屉容器里，说明是桌面图标，坚决隐藏
-            if (name.contains("Workspace") || name.contains("CellLayout") || name.contains("Folder") || name.contains("Hotseat")) {
-                return false
+            if (name.contains("Workspace") || name.contains("CellLayout") || name.contains("Folder") || name.contains("Hotseat") || name.contains("AllApps") || name.contains("RecyclerView")) {
+                return false // 明确在桌面或抽屉中，坚决隐藏
             }
             parent = parent.parent
         }
 
-        // 2. 如果 View 还没挂载（parent为null），退回到严格的调用栈检查（仅限初始化快捷方式时）
+        // 2. 检查布局参数（专门对付即将加入桌面/抽屉，但 parent 还是 null 的 View）
+        val lp = view.layoutParams
+        if (lp != null) {
+            val lpName = lp.javaClass.simpleName
+            if (lpName.contains("CellLayout") || lpName.contains("RecyclerView") || lpName.contains("AllApps")) {
+                return false // 带有桌面或抽屉特征的布局，坚决隐藏
+            }
+        }
+
+        // 3. 兜底策略：刚 new 出来的 View，用宽松的调用栈判断（完美修复长按菜单不显示文字）
         return Thread.currentThread().stackTrace.any { frame ->
             val cls = frame.className
-            val mtd = frame.methodName
-            (cls.contains("PopupContainerWithArrow") && mtd.contains("initializeSystemShortcut")) ||
-            (cls.contains("DeepShortcut") && mtd.contains("apply"))
+            cls.contains("PopupContainerWithArrow") ||
+            cls.contains("DeepShortcut") ||
+            cls.contains("SystemShortcut") ||
+            cls.contains("ShortcutsItemView")
         }
     }
 
     /**
-     * Hook BubbleTextView.setTextVisibility and setTextAlpha so that labels
-     * on BubbleTextView icons (non-ZUI apps, folder names) are always hidden.
+     * Hook BubbleTextView.setTextVisibility and setTextAlpha
      */
     fun installBubbleTextViewVisibilityHook(param: XposedModuleInterface.PackageLoadedParam) {
         try {
@@ -73,14 +80,13 @@ class LauncherNoLabelMode : AppHookModule() {
             val bubbleTextViewClass: Class<*> =
                 loader.loadClass("com.android.launcher3.BubbleTextView")
 
-            // Force setTextVisibility to always hide
             val setTextVisibilityMethod: Method = findMethod(
                 bubbleTextViewClass, "setTextVisibility",
                 Boolean::class.javaPrimitiveType
             )
             hookWithId(setTextVisibilityMethod, "set_text_visibility_1") {  chain ->
                 val view = chain.thisObject as View
-                if (isPopupItem(view)) {
+                if (isFromPopup(view)) {
                     chain.proceed(chain.args.toTypedArray())
                 } else {
                     val args = arrayOf<Any?>(java.lang.Boolean.valueOf(false))
@@ -88,14 +94,13 @@ class LauncherNoLabelMode : AppHookModule() {
                 }
             }
 
-            // Force setTextAlpha to always stay at 0 (hidden).
             val setTextAlphaMethod: Method = findMethod(
                 bubbleTextViewClass, "setTextAlpha",
                 Float::class.javaPrimitiveType
             )
             hookWithId(setTextAlphaMethod, "set_text_alpha_1") {  chain ->
                 val view = chain.thisObject as View
-                if (isPopupItem(view)) {
+                if (isFromPopup(view)) {
                     chain.proceed(chain.args.toTypedArray())
                 } else {
                     val args = arrayOf<Any?>(java.lang.Float.valueOf(0.0f))
@@ -110,9 +115,7 @@ class LauncherNoLabelMode : AppHookModule() {
     }
 
     /**
-     * Hook ActiveIconView.setTextVisibility, setTextAlpha and
-     * setIgnoreSetAlphaVisible so that labels on ActiveIconView icons
-     * are always hidden. (长按菜单里不用这个类，直接无脑隐藏)
+     * Hook ActiveIconView.setTextVisibility, setTextAlpha and setIgnoreSetAlphaVisible
      */
     fun installActiveIconViewVisibilityHook(param: XposedModuleInterface.PackageLoadedParam) {
         try {
@@ -120,27 +123,34 @@ class LauncherNoLabelMode : AppHookModule() {
             val activeIconViewClass: Class<*> =
                 loader.loadClass("com.zui.launcher.ActiveIconView")
 
-            // Force setTextVisibility to always hide
             val setTextVisibilityMethod: Method = findMethod(
                 activeIconViewClass, "setTextVisibility",
                 Boolean::class.javaPrimitiveType
             )
             hookWithId(setTextVisibilityMethod, "set_text_visibility_2") {  chain ->
-                val args = arrayOf<Any?>(java.lang.Boolean.valueOf(false))
-                chain.proceed(args)
+                val view = chain.thisObject as View
+                if (isFromPopup(view)) {
+                    chain.proceed(chain.args.toTypedArray())
+                } else {
+                    val args = arrayOf<Any?>(java.lang.Boolean.valueOf(false))
+                    chain.proceed(args)
+                }
             }
 
-            // Force setTextAlpha to always stay at 0 (hidden)
             val setTextAlphaMethod: Method = findMethod(
                 activeIconViewClass, "setTextAlpha",
                 Float::class.javaPrimitiveType
             )
             hookWithId(setTextAlphaMethod, "set_text_alpha_2") {  chain ->
-                val args = arrayOf<Any?>(java.lang.Float.valueOf(0.0f))
-                chain.proceed(args)
+                val view = chain.thisObject as View
+                if (isFromPopup(view)) {
+                    chain.proceed(chain.args.toTypedArray())
+                } else {
+                    val args = arrayOf<Any?>(java.lang.Float.valueOf(0.0f))
+                    chain.proceed(args)
+                }
             }
 
-            // Prevent setIgnoreSetAlphaVisible from being set to true
             val setIgnoreMethod: Method = findMethod(
                 activeIconViewClass, "setIgnoreSetAlphaVisible",
                 Boolean::class.javaPrimitiveType
