@@ -1,6 +1,7 @@
 package com.qimian233.ztool.hook.modules.launcher.grid
 
 import android.annotation.SuppressLint
+import android.view.View
 import com.qimian233.ztool.hook.base.AppHookModule
 import io.github.libxposed.api.XposedModuleInterface
 import java.lang.reflect.Method
@@ -35,29 +36,36 @@ class LauncherNoLabelMode : AppHookModule() {
     }
 
     /**
-     * Check whether the current call stack includes
-     * PopupContainerWithArrow.initializeSystemShortcut.
-     *
-     * When BubbleTextView is used by the system-shortcut popup, the no-label
-     * logic must be skipped so the popup menu labels display correctly.
+     * 精准判断当前 View 是否属于长按弹窗（而不是被弹窗恢复状态的桌面图标）
      */
-    private fun isFromPopup(): Boolean {
+    private fun isPopupItem(view: View): Boolean {
+        // 1. 优先通过父级容器层级判断（最准确，能完美避开弹窗关闭时的状态恢复）
+        var parent = view.parent
+        while (parent != null) {
+            val name = parent.javaClass.simpleName
+            // 如果在这些弹窗容器里，说明是真正的菜单项，允许显示文字
+            if (name.contains("Popup") || name.contains("DeepShortcut") || name.contains("ShortcutsItem")) {
+                return true
+            }
+            // 如果在这些桌面/抽屉容器里，说明是桌面图标，坚决隐藏
+            if (name.contains("Workspace") || name.contains("CellLayout") || name.contains("Folder") || name.contains("Hotseat")) {
+                return false
+            }
+            parent = parent.parent
+        }
+
+        // 2. 如果 View 还没挂载（parent为null），退回到严格的调用栈检查（仅限初始化快捷方式时）
         return Thread.currentThread().stackTrace.any { frame ->
-            val className = frame.className
-            className.contains("PopupContainerWithArrow") ||
-            className.contains("DeepShortcut") ||
-            className.contains("SystemShortcut") ||
-            className.contains("ShortcutsItemView")
+            val cls = frame.className
+            val mtd = frame.methodName
+            (cls.contains("PopupContainerWithArrow") && mtd.contains("initializeSystemShortcut")) ||
+            (cls.contains("DeepShortcut") && mtd.contains("apply"))
         }
     }
 
     /**
      * Hook BubbleTextView.setTextVisibility and setTextAlpha so that labels
      * on BubbleTextView icons (non-ZUI apps, folder names) are always hidden.
-     *
-     * BubbleTextView is the base icon class used for apps that do NOT use
-     * ActiveIconView (i.e. most third-party apps).  It is also used for the
-     * folder name label on FolderIcon (field "e").
      */
     fun installBubbleTextViewVisibilityHook(param: XposedModuleInterface.PackageLoadedParam) {
         try {
@@ -71,7 +79,8 @@ class LauncherNoLabelMode : AppHookModule() {
                 Boolean::class.javaPrimitiveType
             )
             hookWithId(setTextVisibilityMethod, "set_text_visibility_1") {  chain ->
-                if (isFromPopup()) {
+                val view = chain.thisObject as View
+                if (isPopupItem(view)) {
                     chain.proceed(chain.args.toTypedArray())
                 } else {
                     val args = arrayOf<Any?>(java.lang.Boolean.valueOf(false))
@@ -80,14 +89,13 @@ class LauncherNoLabelMode : AppHookModule() {
             }
 
             // Force setTextAlpha to always stay at 0 (hidden).
-            // FolderAnimationManager.z() calls setTextAlpha directly during
-            // folder open/close animations, bypassing setTextVisibility.
             val setTextAlphaMethod: Method = findMethod(
                 bubbleTextViewClass, "setTextAlpha",
                 Float::class.javaPrimitiveType
             )
             hookWithId(setTextAlphaMethod, "set_text_alpha_1") {  chain ->
-                if (isFromPopup()) {
+                val view = chain.thisObject as View
+                if (isPopupItem(view)) {
                     chain.proceed(chain.args.toTypedArray())
                 } else {
                     val args = arrayOf<Any?>(java.lang.Float.valueOf(0.0f))
@@ -104,15 +112,7 @@ class LauncherNoLabelMode : AppHookModule() {
     /**
      * Hook ActiveIconView.setTextVisibility, setTextAlpha and
      * setIgnoreSetAlphaVisible so that labels on ActiveIconView icons
-     * (ZUI system apps) are always hidden.
-     *
-     * ActiveIconView is used for apps where isZuiActiveIcon() returns true,
-     * e.g. Calendar (com.lenovo.calendar), SafeCenter, Lenovo Switch, etc.
-     *
-     * setIgnoreSetAlphaVisible must be forced to false, otherwise
-     * FolderAnimationManager.z() can set it to true, which makes
-     * setTextAlpha skip the normal visibility path — and the label
-     * reappears during folder open/close animations.
+     * are always hidden. (长按菜单里不用这个类，直接无脑隐藏)
      */
     fun installActiveIconViewVisibilityHook(param: XposedModuleInterface.PackageLoadedParam) {
         try {
@@ -140,8 +140,7 @@ class LauncherNoLabelMode : AppHookModule() {
                 chain.proceed(args)
             }
 
-            // Prevent setIgnoreSetAlphaVisible from being set to true,
-            // so setTextAlpha always flows through to setTextVisibility
+            // Prevent setIgnoreSetAlphaVisible from being set to true
             val setIgnoreMethod: Method = findMethod(
                 activeIconViewClass, "setIgnoreSetAlphaVisible",
                 Boolean::class.javaPrimitiveType
