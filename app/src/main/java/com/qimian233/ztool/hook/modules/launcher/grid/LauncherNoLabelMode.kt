@@ -13,11 +13,6 @@ import java.lang.reflect.Method
  * we hook setTextVisibility / setTextAlpha / setIgnoreSetAlphaVisible so that
  * labels are **visually hidden** while the text content stays intact for
  * screen readers.
- *
- * Covered paths:
- * - BubbleTextView: desktop & folder icons for non-ZUI apps, folder names
- * - ActiveIconView: desktop & folder icons for ZUI system apps
- *   (Calendar, SafeCenter, Lenovo Switch, etc.)
  */
 @SuppressLint("PrivateApi")
 class LauncherNoLabelMode : AppHookModule() {
@@ -36,43 +31,47 @@ class LauncherNoLabelMode : AppHookModule() {
     }
 
     /**
-     * 三层漏斗精准判断当前 View 是否属于长按弹窗
+     * 终极判断过滤：采用“宽进严出”策略保护长按菜单。
+     * 只要带有任何长按菜单/弹窗特征，就放行（显示文字）。
+     * 否则，没有任何特征则判定为桌面或抽屉图标，强制隐藏。
      */
-    private fun isFromPopup(view: View): Boolean {
-        // 1. 检查父级容器（最靠谱，专门对付已经挂载的 View 和状态恢复）
-        var parent = view.parent
-        while (parent != null) {
-            val name = parent.javaClass.simpleName
-            if (name.contains("Popup") || name.contains("DeepShortcut") || name.contains("ShortcutsItem")) {
-                return true // 明确在长按菜单中
-            }
-            if (name.contains("Workspace") || name.contains("CellLayout") || name.contains("Folder") || name.contains("Hotseat") || name.contains("AllApps") || name.contains("RecyclerView")) {
-                return false // 明确在桌面或抽屉中，坚决隐藏
-            }
-            parent = parent.parent
+    private fun shouldForceHideLabel(view: View): Boolean {
+        // 1. 检查 View 自身的类名
+        val viewName = view.javaClass.simpleName
+        if (viewName.contains("DeepShortcut") || viewName.contains("SystemShortcut") || viewName.contains("Popup")) {
+            return false // 明确是菜单项，不隐藏（显示文字）
         }
 
-        // 2. 检查布局参数（专门对付即将加入桌面/抽屉，但 parent 还是 null 的 View）
-        val lp = view.layoutParams
-        if (lp != null) {
-            val lpName = lp.javaClass.simpleName
-            if (lpName.contains("CellLayout") || lpName.contains("RecyclerView") || lpName.contains("AllApps")) {
-                return false // 带有桌面或抽屉特征的布局，坚决隐藏
+        // 2. 检查所有父级容器
+        var p = view.parent
+        while (p != null) {
+            val pName = p.javaClass.simpleName
+            // 注意避开 ShortcutAndWidgetContainer (这是桌面放图标的容器)
+            // 只要在弹窗/菜单容器里，绝对不隐藏
+            if (pName.contains("Popup") || pName.contains("Arrow") || pName.contains("DeepShortcut") || pName.contains("SystemShortcut") || pName.contains("ShortcutsItem")) {
+                return false // 身处长按菜单中，不隐藏（显示文字）
             }
+            p = p.parent
         }
 
-        // 3. 兜底策略：刚 new 出来的 View，用宽松的调用栈判断（完美修复长按菜单不显示文字）
-        return Thread.currentThread().stackTrace.any { frame ->
+        // 3. 检查调用栈 (处理刚创建还没挂载，或者动画状态恢复的情况)
+        val trace = Thread.currentThread().stackTrace
+        for (frame in trace) {
             val cls = frame.className
-            cls.contains("PopupContainerWithArrow") ||
-            cls.contains("DeepShortcut") ||
-            cls.contains("SystemShortcut") ||
-            cls.contains("ShortcutsItemView")
+            if (cls.contains("Popup") || cls.contains("DeepShortcut") || cls.contains("SystemShortcut") || cls.contains("ShortcutsItem")) {
+                // 确保匹配到的不是桌面网格容器 ShortcutAndWidgetContainer
+                if (!cls.contains("ShortcutAndWidgetContainer")) {
+                    return false // 来源于长按菜单逻辑，不隐藏（显示文字）
+                }
+            }
         }
+
+        // 没有任何弹窗菜单特征，彻底认定为桌面/抽屉应用，坚决隐藏！
+        return true
     }
 
     /**
-     * Hook BubbleTextView.setTextVisibility and setTextAlpha
+     * Hook BubbleTextView (普通应用图标)
      */
     fun installBubbleTextViewVisibilityHook(param: XposedModuleInterface.PackageLoadedParam) {
         try {
@@ -86,11 +85,11 @@ class LauncherNoLabelMode : AppHookModule() {
             )
             hookWithId(setTextVisibilityMethod, "set_text_visibility_1") {  chain ->
                 val view = chain.thisObject as View
-                if (isFromPopup(view)) {
-                    chain.proceed(chain.args.toTypedArray())
-                } else {
+                if (shouldForceHideLabel(view)) {
                     val args = arrayOf<Any?>(java.lang.Boolean.valueOf(false))
-                    chain.proceed(args)
+                    chain.proceed(args) // 强制隐藏
+                } else {
+                    chain.proceed(chain.args.toTypedArray()) // 放行，保持原有显示
                 }
             }
 
@@ -100,11 +99,11 @@ class LauncherNoLabelMode : AppHookModule() {
             )
             hookWithId(setTextAlphaMethod, "set_text_alpha_1") {  chain ->
                 val view = chain.thisObject as View
-                if (isFromPopup(view)) {
-                    chain.proceed(chain.args.toTypedArray())
-                } else {
+                if (shouldForceHideLabel(view)) {
                     val args = arrayOf<Any?>(java.lang.Float.valueOf(0.0f))
-                    chain.proceed(args)
+                    chain.proceed(args) // 强制透明
+                } else {
+                    chain.proceed(chain.args.toTypedArray()) // 放行
                 }
             }
 
@@ -115,7 +114,7 @@ class LauncherNoLabelMode : AppHookModule() {
     }
 
     /**
-     * Hook ActiveIconView.setTextVisibility, setTextAlpha and setIgnoreSetAlphaVisible
+     * Hook ActiveIconView (系统动态应用图标)
      */
     fun installActiveIconViewVisibilityHook(param: XposedModuleInterface.PackageLoadedParam) {
         try {
@@ -129,11 +128,11 @@ class LauncherNoLabelMode : AppHookModule() {
             )
             hookWithId(setTextVisibilityMethod, "set_text_visibility_2") {  chain ->
                 val view = chain.thisObject as View
-                if (isFromPopup(view)) {
-                    chain.proceed(chain.args.toTypedArray())
-                } else {
+                if (shouldForceHideLabel(view)) {
                     val args = arrayOf<Any?>(java.lang.Boolean.valueOf(false))
                     chain.proceed(args)
+                } else {
+                    chain.proceed(chain.args.toTypedArray())
                 }
             }
 
@@ -143,11 +142,11 @@ class LauncherNoLabelMode : AppHookModule() {
             )
             hookWithId(setTextAlphaMethod, "set_text_alpha_2") {  chain ->
                 val view = chain.thisObject as View
-                if (isFromPopup(view)) {
-                    chain.proceed(chain.args.toTypedArray())
-                } else {
+                if (shouldForceHideLabel(view)) {
                     val args = arrayOf<Any?>(java.lang.Float.valueOf(0.0f))
                     chain.proceed(args)
+                } else {
+                    chain.proceed(chain.args.toTypedArray())
                 }
             }
 
