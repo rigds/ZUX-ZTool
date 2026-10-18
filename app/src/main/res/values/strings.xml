@@ -1299,4 +1299,21 @@
     <string name="system_framework_pen_wave_impact_text_focus_label">文本框聚焦</string>
     <string name="system_framework_pen_wave_impact_recognition_label">识别完成</string>
     <string name="system_framework_pen_wave_impact_press_label">按压</string>
+
+    <!-- Game tool: danmaku notification font size -->
+    <string name="game_tool_danmu_font_size_title">弹幕通知字号</string>
+    <string name="game_tool_danmu_font_size_summary">调整通知弹幕的文字大小，默认不启用，保持系统原样</string>
+    <string name="game_tool_danmu_font_size_disabled">不启用</string>
+    <string-array name="danmu_font_size_options">
+        <item>不启用</item>
+        <item>16 sp</item>
+        <item>18 sp</item>
+        <item>20 sp</item>
+        <item>22 sp</item>
+        <item>24 sp</item>
+        <item>26 sp</item>
+        <item>28 sp</item>
+        <item>30 sp</item>
+        <item>32 sp</item>
+    </string-array>
 </resources>

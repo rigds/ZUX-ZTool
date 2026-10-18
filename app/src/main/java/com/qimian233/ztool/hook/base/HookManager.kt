@@ -4,6 +4,7 @@ import com.qimian233.ztool.hook.modules.documentsui.DocumentsUIBypass
 import com.qimian233.ztool.hook.modules.freeformbar.SidebarDrawerHook
 import com.qimian233.ztool.hook.modules.gametool.AutoMistakeTouchHook
 import com.qimian233.ztool.hook.modules.gametool.CpuFrequencyFix
+import com.qimian233.ztool.hook.modules.gametool.DanmuFontSizeHook
 import com.qimian233.ztool.hook.modules.gametool.DeviceModelDisguiseHook
 import com.qimian233.ztool.hook.modules.gametool.DisableGameAudioApp
 import com.qimian233.ztool.hook.modules.gametool.SocTemperatureFix
@@ -301,6 +302,7 @@ object HookManager {
         registerHookModule(DeviceModelDisguiseHook())
         registerHookModule(CpuFrequencyFix())
         registerHookModule(SocTemperatureFix())
+        registerHookModule(DanmuFontSizeHook())
 
         registerHookModule(DisableOtaCheck())
         registerHookModule(LenovoOTAHook())

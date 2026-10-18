@@ -235,6 +235,9 @@ object PreferenceKeys {
     val FIX_CPU_CLOCK = BoolKey("Fix_CpuClock", false)
     val FIX_SOC_TEMP = BoolKey("Fix_SocTemp", false)
     val MISTAKE_TOUCH_WHITE_LIST = BoolKey("MistakeTouchWhiteList", false)
+    // Enables the notification barrage text-size hook; the value itself lives in
+    // DANMU_FONT_SIZE (Float). BaseHookModule.isEnabled() reads this boolean key.
+    val DANMU_FONT_SIZE_ENABLE = BoolKey("danmu_font_size_enable", false)
 
     val DISABLE_OTA_CHECK = BoolKey("disable_OtaCheck", false)
     val CUSTOM_OTA_PARAMETERS = BoolKey("custom_ota_parameters", false)
@@ -337,6 +340,10 @@ object PreferenceKeys {
     // Icon scale multiplier overriding Utilities#getCustomedIconScale in the launcher,
     // bypassing its 0.6~1.3 clamp. Only read when LAUNCHER_ICON_SCALE_OVERRIDE is on.
     val LAUNCHER_ICON_SCALE_VALUE = FloatKey("launcher_icon_scale_value", 1.0f)
+
+    // Notification barrage text size in sp. 0f (or any value <= 0f) means "disabled",
+    // i.e. keep the size hardcoded by the game service layout.
+    val DANMU_FONT_SIZE = FloatKey("danmu_font_size", 0f)
 
     // ═══════════════════════════════════════════════════════════
     // String keys
@@ -448,7 +455,7 @@ object PreferenceKeys {
         DISABLE_DOCK_WARNING_CONFIRMED,
         AUTO_MISTAKE_TOUCH, DISABLE_GAME_AUDIO, DISABLE_GAME_AUDIO_APP,
         DISGUISE_TB322FC, FIX_CPU_CLOCK, FIX_SOC_TEMP,
-        MISTAKE_TOUCH_WHITE_LIST,
+        MISTAKE_TOUCH_WHITE_LIST, DANMU_FONT_SIZE_ENABLE,
         DISABLE_OTA_CHECK, CUSTOM_OTA_PARAMETERS, NO_AUTO_OTA_INSTALL,
         BLOCK_OTA_INSTALL_DIALOG, HIDE_OTA_NOTIFICATIONS,
         DISABLE_TB_ENGINE_AUTO_DOWNLOAD, DISABLE_TB_ENGINE_AUTO_INSTALL,
@@ -495,7 +502,7 @@ object PreferenceKeys {
         CUSTOM_STATUSBAR_CLOCK_TEXT_SIZE, CUSTOM_STATUSBAR_CLOCK_LETTER_SPACING,
         SYSTEMUI_NETWORK_SPEED_REFRESH_INTERVAL, SYSTEMUI_NETWORK_SPEED_HIDE_THRESHOLD,
         CUSTOM_CONTROL_CENTER_DATE_TEXT_SIZE, CUSTOM_CONTROL_CENTER_DATE_LETTER_SPACING,
-        LAUNCHER_ICON_SCALE_VALUE
+        LAUNCHER_ICON_SCALE_VALUE, DANMU_FONT_SIZE
     )
 
     val stringKeys: List<StringKey> = listOf(

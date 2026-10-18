@@ -46,6 +46,11 @@ class GameToolSettingsViewModel(
         repository.saveFixSocTemperature(enabled)
     }
 
+    fun setDanmuFontSize(sizeSp: Float) {
+        _uiState.value = _uiState.value.copy(danmuFontSize = sizeSp)
+        repository.saveDanmuFontSize(sizeSp)
+    }
+
     fun setMistakeTouchMode(mode: MistakeTouchMode) {
         _uiState.value = _uiState.value.copy(mistakeTouchMode = mode)
         repository.saveMistakeTouchMode(mode)
@@ -101,7 +106,9 @@ data class GameToolSettingsUiState(
     val fixSocTemperature: Boolean = false,
     val mistakeTouchMode: MistakeTouchMode = MistakeTouchMode.Default,
     val targetGamePackages: List<String> = emptyList(),
-    val showRestartConfirmDialog: Boolean = false
+    val showRestartConfirmDialog: Boolean = false,
+    /** Notification barrage text size in sp; 0f means disabled. */
+    val danmuFontSize: Float = 0f
 ) {
     val whitelistCount: Int
         get() = targetGamePackages.size

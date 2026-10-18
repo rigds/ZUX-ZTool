@@ -97,6 +97,7 @@ fun GameToolSettingsRoute(
             onDisguiseDeviceChanged = viewModel::setDisguiseDevice,
             onFixCpuFrequencyChanged = viewModel::setFixCpuFrequency,
             onFixSocTemperatureChanged = viewModel::setFixSocTemperature,
+            onDanmuFontSizeChanged = viewModel::setDanmuFontSize,
             onMistakeTouchModeChanged = viewModel::setMistakeTouchMode,
             onSelectWhitelist = {
                 val activity = context as? android.app.Activity
@@ -158,6 +159,7 @@ private fun GameToolSettingsScreen(
     onDisguiseDeviceChanged: (Boolean) -> Unit,
     onFixCpuFrequencyChanged: (Boolean) -> Unit,
     onFixSocTemperatureChanged: (Boolean) -> Unit,
+    onDanmuFontSizeChanged: (Float) -> Unit,
     onMistakeTouchModeChanged: (MistakeTouchMode) -> Unit,
     onSelectWhitelist: () -> Unit,
     scrollState: ScrollState,
@@ -204,6 +206,7 @@ private fun GameToolSettingsScreen(
                         onDisguiseDeviceChanged = onDisguiseDeviceChanged,
                         onFixCpuFrequencyChanged = onFixCpuFrequencyChanged,
                         onFixSocTemperatureChanged = onFixSocTemperatureChanged,
+                        onDanmuFontSizeChanged = onDanmuFontSizeChanged,
                         onMistakeTouchModeChanged = onMistakeTouchModeChanged,
                         onSelectWhitelist = onSelectWhitelist
                     ),
@@ -222,6 +225,7 @@ private fun gameToolSettingsSections(
     onDisguiseDeviceChanged: (Boolean) -> Unit,
     onFixCpuFrequencyChanged: (Boolean) -> Unit,
     onFixSocTemperatureChanged: (Boolean) -> Unit,
+    onDanmuFontSizeChanged: (Float) -> Unit,
     onMistakeTouchModeChanged: (MistakeTouchMode) -> Unit,
     onSelectWhitelist: () -> Unit
 ): List<SettingSection> {
@@ -251,6 +255,17 @@ private fun gameToolSettingsSections(
                 checked = state.fixSocTemperature,
                 onCheckedChange = onFixSocTemperatureChanged,
                 key = "game_tool_fix_soc_temp"
+            )
+        )
+        add(
+            SettingItem.Custom(
+                content = {
+                    DanmuFontSizeRow(
+                        currentSize = state.danmuFontSize,
+                        onSizeChanged = onDanmuFontSizeChanged
+                    )
+                },
+                key = "game_tool_danmu_font_size"
             )
         )
         add(
@@ -296,6 +311,26 @@ private fun gameToolSettingsSections(
             title = stringResource(R.string.game_tool_function_title),
             items = functionItems
         )
+    )
+}
+
+@Composable
+private fun DanmuFontSizeRow(
+    currentSize: Float,
+    onSizeChanged: (Float) -> Unit
+) {
+    // 0f renders as "disabled"; anything else renders as "<n> sp".
+    val options = listOf(0f, 16f, 18f, 20f, 22f, 24f, 26f, 28f, 30f, 32f)
+    val disabledLabel = stringResource(R.string.game_tool_danmu_font_size_disabled)
+    val selectedLabel = if (currentSize <= 0f) disabledLabel else "${currentSize.toInt()} sp"
+
+    ZToolPopupMenuSettingRow(
+        title = stringResource(R.string.game_tool_danmu_font_size_title),
+        summary = stringResource(R.string.game_tool_danmu_font_size_summary),
+        value = selectedLabel,
+        options = options,
+        optionLabel = { if (it <= 0f) disabledLabel else "${it.toInt()} sp" },
+        onOptionSelected = onSizeChanged
     )
 }
 

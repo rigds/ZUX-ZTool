@@ -30,7 +30,8 @@ class GameToolSettingsRepository(
             fixCpuFrequency = prefsUtils.loadBooleanSetting(KEY_FIX_CPU_FREQUENCY, false),
             fixSocTemperature = prefsUtils.loadBooleanSetting(KEY_FIX_SOC_TEMPERATURE, false),
             mistakeTouchMode = mistakeTouchMode,
-            targetGamePackages = loadWhitelistPackages()
+            targetGamePackages = loadWhitelistPackages(),
+            danmuFontSize = prefsUtils.loadFloatSetting(KEY_DANMU_FONT_SIZE, 0f)
         )
     }
 
@@ -49,6 +50,13 @@ class GameToolSettingsRepository(
 
     fun saveFixSocTemperature(enabled: Boolean) {
         prefsUtils.saveBooleanSetting(KEY_FIX_SOC_TEMPERATURE, enabled)
+    }
+
+    fun saveDanmuFontSize(sizeSp: Float) {
+        prefsUtils.saveFloatSetting(KEY_DANMU_FONT_SIZE, sizeSp)
+        // Keep the boolean module switch in sync: 0f means the hook should not touch anything.
+        // BaseHookModule.isEnabled() reads this boolean and skips the whole module when false.
+        prefsUtils.saveBooleanSetting(KEY_DANMU_FONT_SIZE_ENABLE, sizeSp > 0f)
     }
 
     fun saveMistakeTouchMode(mode: MistakeTouchMode) {
@@ -111,6 +119,8 @@ class GameToolSettingsRepository(
         private val KEY_DISGUISE_DEVICE = PreferenceKeys.DISGUISE_TB322FC.name
         private val KEY_FIX_CPU_FREQUENCY = PreferenceKeys.FIX_CPU_CLOCK.name
         private val KEY_FIX_SOC_TEMPERATURE = PreferenceKeys.FIX_SOC_TEMP.name
+        private val KEY_DANMU_FONT_SIZE = PreferenceKeys.DANMU_FONT_SIZE.name
+        private val KEY_DANMU_FONT_SIZE_ENABLE = PreferenceKeys.DANMU_FONT_SIZE_ENABLE.name
         private val KEY_AUTO_MISTAKE_TOUCH = PreferenceKeys.AUTO_MISTAKE_TOUCH.name
         private val KEY_MISTAKE_TOUCH_WHITE_LIST = PreferenceKeys.MISTAKE_TOUCH_WHITE_LIST.name
         private val KEY_MISTAKE_TOUCH_WHITE_LIST_GAME = PreferenceKeys.MISTAKE_TOUCH_WHITE_LIST_GAME.name
