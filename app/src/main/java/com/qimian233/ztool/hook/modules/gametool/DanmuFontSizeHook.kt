@@ -65,8 +65,15 @@ class DanmuFontSizeHook : AppHookModule() {
     /**
      * Keeps a compound (left/right) icon proportional to the text height.
      *
-     * <p>The icon bounds are set once by the app before the text size is changed; without
-     * this adjustment the icon stays at its old pixel size and no longer looks centred.
+     * <p>The app sets the icon bounds once, before the text size is changed; without this
+     * adjustment the icon keeps its old pixel size and no longer matches the text.
+     *
+     * <p>Important: the new size is derived from the drawable's <em>current bounds</em>, which is
+     * the only value the app is guaranteed to have set. {@code getIntrinsicWidth()} frequently
+     * returns -1 (bitmaps without density, vector drawables, remotely loaded icons), and scaling
+     * -1 yields a negative width/height, which makes the framework fall back to a degenerate
+     * vertical rectangle. Both axes are therefore scaled by the same factor, keeping the aspect
+     * ratio and the centre point exactly as the app laid them out.
      */
     private fun scaleCompoundIcon(tv: TextView, beforeSp: Float, afterSp: Float) {
         if (beforeSp <= 0f || afterSp <= 0f) return
@@ -77,17 +84,22 @@ class DanmuFontSizeHook : AppHookModule() {
             val ratio = afterSp / beforeSp
             if (ratio > 0.98f && ratio < 1.02f) return
 
-            val paint = tv.paint
-            val fm = paint.fontMetrics
-            val textH = (fm.descent - fm.ascent).toInt()
-
             for (d in ds) {
                 if (d == null) continue
-                val w = (d.intrinsicWidth * ratio).toInt()
-                val h = (d.intrinsicHeight * ratio).toInt()
-                // Align the icon's vertical centre with the text's vertical centre.
-                val top = ((textH - h) / 2.0).toInt() + fm.ascent.toInt()
-                d.setBounds(0, top, w, top + h)
+                val b = d.bounds
+                val baseW = if (b.width() > 0) b.width() else d.intrinsicWidth
+                val baseH = if (b.height() > 0) b.height() else d.intrinsicHeight
+                if (baseW <= 0 || baseH <= 0) continue
+
+                val w = (baseW * ratio).toInt().coerceAtLeast(1)
+                val h = (baseH * ratio).toInt().coerceAtLeast(1)
+
+                // Scale around the existing centre so the icon stays where the app put it.
+                val cx = (b.left + b.right) / 2f
+                val cy = (b.top + b.bottom) / 2f
+                val left = (cx - w / 2f).toInt()
+                val top = (cy - h / 2f).toInt()
+                d.setBounds(left, top, left + w, top + h)
             }
             // Re-apply so the TextView re-layouts with the new bounds.
             tv.setCompoundDrawables(ds[0], ds[1], ds[2], ds[3])
