@@ -49,8 +49,13 @@ class DanmuFontSizeHook : AppHookModule() {
                 val sp = readSizeSp()
                 if (sp > 0f && result is TextView) {
                     val before = px2sp(result)
+                    // Set the size first so the following measure pass sees it, then resize
+                    // the compound icon and force a re-measure. Order matters: the TextView
+                    // allocates horizontal space for a compound drawable from its *bounds*,
+                    // so growing the bounds after a measure pass leaves the icon clipped.
                     result.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)
                     scaleCompoundIcon(result, before, sp)
+                    result.requestLayout()
                     logger.debug("getTextView -> ${before}sp => ${sp}sp")
                 }
                 result
@@ -63,17 +68,19 @@ class DanmuFontSizeHook : AppHookModule() {
     }
 
     /**
-     * Keeps a compound (left/right) icon proportional to the text height.
+     * Keeps the compound (left) app icon sized to the text height.
      *
-     * <p>The app sets the icon bounds once, before the text size is changed; without this
-     * adjustment the icon keeps its old pixel size and no longer matches the text.
+     * <p>The barrage text's app icon is a compound drawable, not a separate ImageView. The app
+     * sets its bounds once with {@code setCompoundDrawables}, using the text height at that
+     * moment, and never recomputes them — so changing the text size afterwards leaves the icon
+     * at the old pixel size.
      *
-     * <p>Important: the new size is derived from the drawable's <em>current bounds</em>, which is
-     * the only value the app is guaranteed to have set. {@code getIntrinsicWidth()} frequently
-     * returns -1 (bitmaps without density, vector drawables, remotely loaded icons), and scaling
-     * -1 yields a negative width/height, which makes the framework fall back to a degenerate
-     * vertical rectangle. Both axes are therefore scaled by the same factor, keeping the aspect
-     * ratio and the centre point exactly as the app laid them out.
+     * <p>A TextView allocates horizontal space for a compound drawable from the drawable's
+     * <em>bounds</em>, and draws it inside that allocated box. Resizing the bounds by a ratio of
+     * the previous bounds is therefore fragile: the old bounds may already carry a size written
+     * by an earlier pass, so the error compounds and the icon ends up clipped. Instead the size
+     * is recomputed from scratch as an absolute, square pixel value derived from the target text
+     * size — the same approach that is proven to work.
      */
     private fun scaleCompoundIcon(tv: TextView, beforeSp: Float, afterSp: Float) {
         if (beforeSp <= 0f || afterSp <= 0f) return
@@ -82,27 +89,20 @@ class DanmuFontSizeHook : AppHookModule() {
             if (ds.all { it == null }) return
 
             val ratio = afterSp / beforeSp
-            if (ratio > 0.98f && ratio < 1.02f) return
+            if (ratio <= 1.01f) return
+
+            val dm = tv.resources.displayMetrics
+            val textH = Math.round(afterSp * dm.scaledDensity)
+            val iconSize = Math.round(textH * ICON_SIZE_FACTOR)
 
             for (d in ds) {
                 if (d == null) continue
-                val b = d.bounds
-                val baseW = if (b.width() > 0) b.width() else d.intrinsicWidth
-                val baseH = if (b.height() > 0) b.height() else d.intrinsicHeight
-                if (baseW <= 0 || baseH <= 0) continue
-
-                val w = (baseW * ratio).toInt().coerceAtLeast(1)
-                val h = (baseH * ratio).toInt().coerceAtLeast(1)
-
-                // Scale around the existing centre so the icon stays where the app put it.
-                val cx = (b.left + b.right) / 2f
-                val cy = (b.top + b.bottom) / 2f
-                val left = (cx - w / 2f).toInt()
-                val top = (cy - h / 2f).toInt()
-                d.setBounds(left, top, left + w, top + h)
+                // Always a square anchored at the origin, so the aspect ratio can never skew.
+                d.setBounds(0, 0, iconSize, iconSize)
             }
-            // Re-apply so the TextView re-layouts with the new bounds.
+            // Re-apply so the TextView re-measures and allocates the new drawable width.
             tv.setCompoundDrawables(ds[0], ds[1], ds[2], ds[3])
+            logger.debug("compoundIcon: iconSize=${iconSize}px (ratio x$ratio, textH=${textH}px)")
         } catch (t: Throwable) {
             logger.error("Failed to scale compound icon", t)
         }
@@ -128,5 +128,8 @@ class DanmuFontSizeHook : AppHookModule() {
 
     companion object {
         private const val NOTIF_CLASS = "com.zui.game.service.ui.NotificationMsgController"
+
+        /** Icon edge length relative to the text height; matches the app's own proportions. */
+        private const val ICON_SIZE_FACTOR = 1.15f
     }
 }
