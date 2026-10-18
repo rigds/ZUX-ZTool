@@ -23,12 +23,13 @@ import io.github.libxposed.api.XposedInterface
 import io.github.libxposed.api.XposedModuleInterface.PackageLoadedParam
 import java.lang.reflect.Executable
 import java.lang.reflect.Field
+import java.util.WeakHashMap
 
 /**
  * 「智慧识屏」AI 卡片左上角「复制原文」按钮。
  *
  * 移植自独立模块 ZSXCopyBtn v1.6.2（原实现为 Java + 文件桥接配置），并入 ZTool 后：
- *  - 配置改走 ZTool 统一的 remotePreferences（xposed_module_config），不再写 /data/misc 桥接文件；
+ *  - 配置改走 ZTool 统一的 remotePreferences，不再写 /data/misc 桥接文件；
  *  - Hook 统一走 hookWithId()，日志统一走 logger；
  *  - 三个开关每次点击时实时读取，改设置后无需重启宿主进程即可对下一张卡片生效。
  *
@@ -37,8 +38,23 @@ import java.lang.reflect.Field
  *     -> DetectResultView.showCard(...)
  *       -> new AICardView(String mOriginText, Context, AIServiceProxy, int, AttributeSet)
  *          -> this.mBinding.cardMenu (CardBottomMenus)
- * 注入点：AICardView（FrameLayout）左上角，TOP|LEFT 悬浮，避免与底部按钮条重叠。
- * 注入时机：构造函数返回后 post 一帧；onSizeChanged / onLayoutChanged 兜底。
+ *
+ * ── 只在「顶层卡片」上注入（重要）────────────────────────────────────────
+ * 宿主会同时创建多张 AICardView（主卡片、AI 翻译子卡片、AI 摘要子卡片 …），
+ * 它们是各自独立的实例，但共享同一个父布局。若对每张卡片都注入按钮，就会在
+ * 屏幕上出现一堆「复制原文」（子卡片可能被排到可视区外，按钮更是散落各处）。
+ *
+ * 因此这里加了两道闸：
+ *   1. isTopLevelCard()：父链上还存在 AICardView 的卡片一律跳过 —— 只认最外层
+ *      那一张，子卡片完全不动；
+ *   2. injectedCards：WeakHashMap 记录已注入的卡片实例，同一实例只注入一次，
+ *      避免 post 一帧 + 重试导致重复 addView。
+ *
+ * ── 注入时机 ─────────────────────────────────────────────────────────
+ * 只保留构造函数 after hook（AICardView 未重写 onAttachedToWindow，构造后 post
+ * 一帧最可靠）。onSizeChanged / onLayoutChanged 之类的兜底注入已全部移除 ——
+ * 它们会被重绘频繁触发，是重复注入的第二大来源。
+ * onConfigurationChanged / updateUi 只用于同步深浅色配色，不做注入。
  */
 class AiLensCopyTextHook : AppHookModule() {
 
@@ -55,25 +71,16 @@ class AiLensCopyTextHook : AppHookModule() {
             return
         }
 
-        // 主入口：AICardView 未重写 onAttachedToWindow，构造完成后 post 一帧注入最可靠
-        hookAllConstructors(aiCardViewCls, "ctor") { cardView -> injectButtonWithRetry(cardView, 0) }
-
-        // 兜底一：尺寸变化时补注入（此时布局已就绪）
-        hookAll(aiCardViewCls, "onSizeChanged", "size") { cardView ->
+        // 唯一注入入口：AICardView 构造完成后 post 一帧
+        hookAllConstructors(aiCardViewCls) { cardView ->
             injectButtonWithRetry(cardView, 0)
         }
 
-        // 兜底二：布局变化回调
-        hookAll(aiCardViewCls, "onLayoutChanged", "layout") { cardView ->
-            injectButtonWithRetry(cardView, 0)
-        }
-
-        // 深浅色模式切换时同步按钮配色
+        // 仅同步配色，不做注入
         hookAll(aiCardViewCls, "onConfigurationChanged", "config") { cardView ->
             refreshButtonTheme(cardView)
         }
 
-        // 宿主自身 updateUi(boolean dark) 也会在主题变化时被调用，作为二次保障
         hookAll(aiCardViewCls, "updateUi", "updateUi") { cardView ->
             refreshButtonTheme(cardView)
         }
@@ -111,10 +118,14 @@ class AiLensCopyTextHook : AppHookModule() {
     }
 
     /** 构造全部 Hook，主线程 after hook 执行并捕获异常。 */
-    private fun hookAllConstructors(cls: Class<*>, tag: String, action: CardAction) {
+    private fun hookAllConstructors(cls: Class<*>, action: CardAction) {
         try {
             for (ctor in cls.declaredConstructors) {
-                hookWithId(ctor as Executable, "ai_lens_copy_${tag}_${ctor.toGenericString()}", afterHook(tag, action))
+                hookWithId(
+                    ctor as Executable,
+                    "ai_lens_copy_ctor_${ctor.toGenericString()}",
+                    afterHook("ctor", action)
+                )
             }
         } catch (t: Throwable) {
             logger.warn("hook constructors skipped: $t")
@@ -162,7 +173,6 @@ class AiLensCopyTextHook : AppHookModule() {
 
     // ── 注入逻辑 ───────────────────────────────────────────────────────────
 
-    @SuppressLint("SetTextI18n")
     private fun injectButtonWithRetry(cardView: View, attempt: Int) {
         if (attempt > MAX_RETRY) {
             logger.debug("give up injecting after $attempt attempts")
@@ -173,10 +183,13 @@ class AiLensCopyTextHook : AppHookModule() {
         }
     }
 
-    /** @return true 表示已注入完毕（成功或已存在），无需重试 */
+    /** @return true 表示已注入完毕（成功、已存在或不属于本模块处理范围），无需重试 */
     private fun tryInject(cardView: View): Boolean {
+        // 闸一：只处理最外层卡片，子卡片直接放手
+        if (!isTopLevelCard(cardView)) return true
+
         // AICardView 继承 FrameLayout，直接把按钮悬浮到卡片左上角
-        val cardRoot = cardView as? FrameLayout ?: return false
+        val cardRoot = cardView as? FrameLayout ?: return true
 
         // 布局尚未 inflate 完（还没子 View）时稍后重试
         if (cardRoot.childCount == 0) return false
@@ -187,10 +200,23 @@ class AiLensCopyTextHook : AppHookModule() {
                 cardRoot.removeView(it)
                 logger.debug("button removed (switch off)")
             }
+            synchronized(injectedCards) { injectedCards.remove(cardView) }
             return true
         }
 
-        if (cardRoot.findViewWithTag<View>(BTN_TAG) != null) return true
+        // 闸二：同一张卡片实例只注入一次
+        synchronized(injectedCards) {
+            if (injectedCards.containsKey(cardView)) {
+                // 标记在但视图真没了（被宿主内部清理），补一次
+                if (cardRoot.findViewWithTag<View>(BTN_TAG) != null) return true
+                injectedCards.remove(cardView)
+            }
+        }
+
+        if (cardRoot.findViewWithTag<View>(BTN_TAG) != null) {
+            synchronized(injectedCards) { injectedCards[cardView] = true }
+            return true
+        }
 
         val ctx = cardView.context ?: return false
 
@@ -212,9 +238,34 @@ class AiLensCopyTextHook : AppHookModule() {
         cardRoot.addView(btn)
         btn.bringToFront()
 
+        synchronized(injectedCards) { injectedCards[cardView] = true }
+
         logger.debug(
             "button injected at top-left, selectedText.len=${selectedText?.length ?: -1}"
         )
+        return true
+    }
+
+    /**
+     * 是否为「顶层」AI 卡片：父链上不存在其它 AICardView。
+     *
+     * 宿主的卡片是嵌套的 —— 主卡片里再放 AI 翻译 / AI 摘要的子卡片。
+     * 子卡片如果也注入按钮，就会跟着子卡片的位置散落到屏幕各处（实际截图即如此）。
+     * 因此只有父链干净的那一张才算顶层。
+     */
+    private fun isTopLevelCard(cardView: View): Boolean {
+        try {
+            var p: ViewParent? = cardView.parent
+            var depth = 0
+            while (p is View && depth < MAX_PARENT_DEPTH) {
+                if (p.javaClass.name == AI_CARD_VIEW_CLASS) return false
+                p = p.parent
+                depth++
+            }
+        } catch (t: Throwable) {
+            // 查不到父链时保守放行，交给闸二去重
+            logger.debug("isTopLevelCard failed: $t")
+        }
         return true
     }
 
@@ -453,7 +504,13 @@ class AiLensCopyTextHook : AppHookModule() {
         /** 每帧后的重试次数上限 */
         const val MAX_RETRY = 8
 
-        /** 向上找 UIController 的最大父层深度 */
+        /** 向上找 UIController / 判断顶层卡片的最大父层深度 */
         const val MAX_PARENT_DEPTH = 8
+
+        /**
+         * 已注入过按钮的卡片实例。
+         * WeakHashMap 保证卡片被宿主回收后不会造成泄漏。
+         */
+        val injectedCards: MutableMap<View, Boolean> = WeakHashMap()
     }
 }
