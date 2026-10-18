@@ -72,7 +72,7 @@ android {
         targetSdk = 37
 
         versionCode = getGitCommitCount()
-        versionName = "Beta/${getBuildTime()}"
+        versionName = "Beta/${getBuildTime()}-ailens"
         buildConfigField("int", "GIT_COMMIT_COUNT", "${getGitCommitCount()}")
         buildConfigField("String", "GIT_COMMIT_HASH", "\"${getGitCommitHash()}\"")
         buildConfigField("boolean", "IS_DEV_BUILD", "${!isOfficialReleaseBuild}")

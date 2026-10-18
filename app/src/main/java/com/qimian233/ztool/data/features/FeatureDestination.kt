@@ -18,5 +18,6 @@ enum class FeatureDestination(
     DeviceService("feature/device-service"),
     FreeformBar("feature/freeform-bar"),
     UiComponents("feature/ui-components"),
-    FreeformHub("feature/freeform-hub")
+    FreeformHub("feature/freeform-hub"),
+    AiLens("feature/ai-lens")
 }

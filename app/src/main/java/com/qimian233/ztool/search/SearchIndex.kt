@@ -207,6 +207,16 @@ object SearchIndex {
             groupTitleRes = R.string.search_group_feature_cards
         ),
         SearchEntry(
+            id = "feature_card_ai_lens",
+            route = FeatureDestination.AiLens.route,
+            titleRes = R.string.ai_lens_app_name,
+            summaryRes = R.string.ai_lens_app_description,
+            requiresPackage = ScopeKeys.AI_LENS.packageName,
+            isFeatureCard = true,
+            featureDestination = FeatureDestination.AiLens,
+            groupTitleRes = R.string.search_group_feature_cards
+        ),
+        SearchEntry(
             id = "feature_card_device_service",
             route = FeatureDestination.DeviceService.route,
             titleRes = R.string.device_service_app_name,
@@ -352,6 +362,12 @@ object SearchIndex {
         route = FeatureDestination.SogouIme.route,
         groupTitleRes = R.string.sogou_ime_app_name,
         requiresPackage = ScopeKeys.SOGOU_OEM_IME.packageName
+    )
+
+    private val aiLens = Screen(
+        route = FeatureDestination.AiLens.route,
+        groupTitleRes = R.string.ai_lens_app_name,
+        requiresPackage = ScopeKeys.AI_LENS.packageName
     )
 
     private val deviceService = Screen(
@@ -1599,6 +1615,27 @@ object SearchIndex {
             parentTitleRes = R.string.sogou_ime_enter_key_title,
             parentKey = "sogou_ime_enter_key",
             parentMode = SearchParentMode.REQUIRE_ON
+        ),
+
+        aiLens.item(
+            id = "ai_lens_copy_text",
+            titleRes = R.string.ai_lens_copy_button_title,
+            summaryRes = R.string.ai_lens_copy_button_summary,
+            keywords = listOf("识屏", "复制原文", "AI", "lens")
+        ),
+        aiLens.item(
+            id = "ai_lens_close_card_after_copy",
+            titleRes = R.string.ai_lens_close_card_title,
+            summaryRes = R.string.ai_lens_close_card_summary,
+            parentTitleRes = R.string.ai_lens_copy_button_title,
+            parentKey = "ai_lens_copy_text"
+        ),
+        aiLens.item(
+            id = "ai_lens_exit_lens_after_copy",
+            titleRes = R.string.ai_lens_exit_lens_title,
+            summaryRes = R.string.ai_lens_exit_lens_summary,
+            parentTitleRes = R.string.ai_lens_copy_button_title,
+            parentKey = "ai_lens_copy_text"
         ),
 
         freeformBar.item(

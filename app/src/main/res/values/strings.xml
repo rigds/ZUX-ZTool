@@ -753,6 +753,17 @@
     <string name="system_framework_ai_input_expand_title">自定义唤起符</string>
     <string name="system_framework_ai_input_expand_summary">尝试强制启用AI全局输入，自定义AI触发符号，官方默认为全/半角的“&amp;&amp;”</string>
     <string name="system_framework_half_width_punct_title">强制半角符号输出</string>
+    <string name="ai_lens_app_name">智慧识屏（联想 AI 服务）</string>
+    <string name="ai_lens_app_description">在识屏 AI 卡片左上角添加「复制原文」按钮，复制后可直接关闭卡片或退出识屏</string>
+    <string name="ai_lens_section_copy_button">复制原文按钮</string>
+    <string name="ai_lens_copy_button_title">显示「复制原文」按钮</string>
+    <string name="ai_lens_copy_button_summary">在识屏结果 AI 卡片左上角悬浮一个按钮，点击即可复制本次识别的原文（AICardView 中保存的选中文字），无需长按卡片。开关改动实时生效，无需重启宿主。</string>
+    <string name="ai_lens_section_after_copy">复制之后的动作</string>
+    <string name="ai_lens_close_card_title">复制后收起 AI 卡片</string>
+    <string name="ai_lens_close_card_summary">点击复制成功后自动关闭当前 AI 卡片，保留识屏取景界面以便继续框选。</string>
+    <string name="ai_lens_exit_lens_title">复制后退出识屏</string>
+    <string name="ai_lens_exit_lens_summary">点击复制成功后走系统原生退出流程，直接回到原来的应用界面。与「收起卡片」同时开启时以本项为准。</string>
+    <string name="ai_lens_usage_tip">使用方法：划出「智慧识屏」并框选文字，等 AI 卡片出现后，点击卡片左上角的「复制原文」即可把原文写入剪贴板。</string>
     <string name="sogou_ime_app_name">搜狗输入法（联想OEM）</string>
     <string name="sogou_ime_app_description">输入法增强：强制半角符号输出、标点干预等</string>
     <string name="sogou_ime_enter_key_section_title">回车键行为</string>

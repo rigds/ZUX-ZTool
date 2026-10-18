@@ -1,5 +1,6 @@
 package com.qimian233.ztool.hook.base
 
+import com.qimian233.ztool.hook.modules.ailens.AiLensCopyTextHook
 import com.qimian233.ztool.hook.modules.documentsui.DocumentsUIBypass
 import com.qimian233.ztool.hook.modules.freeformbar.SidebarDrawerHook
 import com.qimian233.ztool.hook.modules.gametool.AutoMistakeTouchHook
@@ -184,6 +185,7 @@ object HookManager {
         registerHookModule(DisableVolumeWarnDialog())
         registerHookModule(AiInputExpand())
         registerHookModule(HalfWidthPunctHook())
+        registerHookModule(AiLensCopyTextHook())
         registerHookModule(SogouEnterKeyHook())
         registerHookModule(KeepRotation())
         registerHookModule(AllowRelativeAppLaunch())

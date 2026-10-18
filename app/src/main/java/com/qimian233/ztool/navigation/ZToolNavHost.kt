@@ -30,6 +30,7 @@ import com.qimian233.ztool.screens.mobiledesktop.MobileDesktopSettingsRoute
 import com.qimian233.ztool.screens.ota.OtaSettingsRoute
 import com.qimian233.ztool.screens.packageinstaller.PackageInstallerSettingsRoute
 import com.qimian233.ztool.screens.safecenter.SafeCenterSettingsRoute
+import com.qimian233.ztool.screens.ailens.AiLensSettingsRoute
 import com.qimian233.ztool.screens.sogouime.SogouImeSettingsRoute
 import com.qimian233.ztool.screens.pp.ZuiPerformanceSettingsRoute
 import com.qimian233.ztool.screens.tbengine.TbEngineSettingsRoute
@@ -808,6 +809,27 @@ internal fun MainRouteNavHost(
             )
         }
         composable(
+            route = routeWithTarget(FeatureDestination.AiLens.route),
+            enterTransition = horizontalEnter,
+            exitTransition = horizontalExit,
+            popEnterTransition = horizontalPopEnter,
+            popExitTransition = horizontalPopExit,
+            arguments = highlightTargetArguments
+        ) { backStackEntry ->
+            AiLensSettingsRoute(
+                title = stringResource(R.string.ai_lens_app_name),
+                packageName = ScopeKeys.AI_LENS.packageName,
+                onBack = {
+                    if (!navController.popBackStack()) {
+                        navController.navigate(MainRoute.Features.name) {
+                            launchSingleTop = true
+                        }
+                    }
+                },
+                targetId = backStackEntry.highlightTarget(),
+            )
+        }
+        composable(
             route = routeWithTarget(FeatureDestination.SogouIme.route),
             enterTransition = horizontalEnter,
             exitTransition = horizontalExit,
@@ -1004,6 +1026,7 @@ private fun navigationRouteIndex(rawRoute: String?): Int {
         FeatureDestination.TbEngine.route -> 2
         FeatureDestination.ZuiPerformance.route -> 2
         FeatureDestination.SogouIme.route -> 2
+        FeatureDestination.AiLens.route -> 2
         FeatureDestination.DeviceService.route -> 2
         FeatureDestination.FreeformBar.route -> 2
         FeatureDestination.UiComponents.route -> 2

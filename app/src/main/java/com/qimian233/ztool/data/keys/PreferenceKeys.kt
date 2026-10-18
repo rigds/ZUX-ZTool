@@ -274,6 +274,13 @@ object PreferenceKeys {
     val BYPASS_SHARE_WARNING = BoolKey("bypass_share_warning", false)
     val DISABLE_NEARBY_SHARE_COUNTDOWN = BoolKey("disable_nearby_share_countdown", false)
 
+    // 智慧识屏（com.zui.ai.lens）AI 卡片左上角「复制原文」按钮
+    val AI_LENS_COPY_TEXT = BoolKey("ai_lens_copy_text", true)
+    // 复制后自动收起 AI 卡片
+    val AI_LENS_CLOSE_CARD_AFTER_COPY = BoolKey("ai_lens_close_card_after_copy", false)
+    // 复制后直接退出整个识屏界面（与上一项同开时以本项为准）
+    val AI_LENS_EXIT_LENS_AFTER_COPY = BoolKey("ai_lens_exit_lens_after_copy", true)
+
     val HALF_WIDTH_PUNCT = BoolKey("half_width_punct", false)
     val SOGOU_ENTER_KEY = BoolKey("sogou_enter_key", false)
     val AUTO_CHECK_UPDATE = BoolKey("auto_check_update", true)
@@ -472,6 +479,7 @@ object PreferenceKeys {
         AUTO_CHECK_UPDATE, HIDE_FROM_RECENTS,
         YIYAN, IS_SYSTEMUI_PERMISSION_CONFIRMED, IS_CONFIG_UPGRADED,
         HALF_WIDTH_PUNCT, SOGOU_ENTER_KEY,
+        AI_LENS_COPY_TEXT, AI_LENS_CLOSE_CARD_AFTER_COPY, AI_LENS_EXIT_LENS_AFTER_COPY,
         SYSTEMUI_REALWATTS_SHOW_VOLTAGE, SYSTEMUI_REALWATTS_SHOW_CURRENT,
         SYSTEMUI_REALWATTS_SHOW_POWER, SYSTEMUI_REALWATTS_SHOW_TEMPERATURE,
         SYSTEMUI_REALWATTS_SHOW_INDICATOR, SYSTEMUI_REALWATTS_CUSTOM_FORMAT_ENABLED,

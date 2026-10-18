@@ -170,6 +170,12 @@ object FeatureCatalog {
             scopes = listOf(ScopeKeys.LENOVO_DEVICE_SERVICE, ScopeKeys.TAB_PUSHOUT)
         ),
         appCard(
+            destination = FeatureDestination.AiLens,
+            nameRes = R.string.ai_lens_app_name,
+            descriptionRes = R.string.ai_lens_app_description,
+            primary = ScopeKeys.AI_LENS
+        ),
+        appCard(
             destination = FeatureDestination.FreeformBar,
             nameRes = R.string.freeform_sidebar_app_name,
             descriptionRes = R.string.freeform_sidebar_app_description,

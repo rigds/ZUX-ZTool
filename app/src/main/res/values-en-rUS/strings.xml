@@ -670,6 +670,17 @@
     <string name="system_framework_ai_input_expand_title">Custom trigger symbols</string>
     <string name="system_framework_ai_input_expand_summary">Try to force-enable AI global input and customize AI trigger symbols. The official default is full-width/half-width "&amp;&amp;".</string>
     <string name="system_framework_half_width_punct_title">Force half-width symbol output</string>
+    <string name="ai_lens_app_name">Smart Lens (Lenovo AI)</string>
+    <string name="ai_lens_app_description">Adds a "Copy text" button to the top-left of the Smart Lens AI card, with optional auto-close or exit after copying</string>
+    <string name="ai_lens_section_copy_button">Copy button</string>
+    <string name="ai_lens_copy_button_title">Show \"Copy text\" button</string>
+    <string name="ai_lens_copy_button_summary">Floats a button at the top-left of the AI result card. One tap copies the original recognized text without long-pressing the card. Changes apply immediately, no host restart needed.</string>
+    <string name="ai_lens_section_after_copy">After copying</string>
+    <string name="ai_lens_close_card_title">Dismiss the AI card after copying</string>
+    <string name="ai_lens_close_card_summary">Automatically close the AI card after a successful copy, keeping the lens viewfinder open for further selection.</string>
+    <string name="ai_lens_exit_lens_title">Exit Smart Lens after copying</string>
+    <string name="ai_lens_exit_lens_summary">Use the native system exit flow after a successful copy and return straight to the previous app. Takes precedence over dismissing the card.</string>
+    <string name="ai_lens_usage_tip">How to use: open Smart Lens and select text. When the AI card appears, tap the "Copy text" button at its top-left corner to put the original text on the clipboard.</string>
     <string name="sogou_ime_app_name">Sogou IME (Lenovo OEM)</string>
     <string name="sogou_ime_app_description">IME enhancements: forced half-width symbol output, punctuation intervention, etc.</string>
     <string name="sogou_ime_enter_key_section_title">Enter key behavior</string>
